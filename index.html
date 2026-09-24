@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>目薬タイマー</title>
+<style>
+  :root{
+    --bg:#F3F6F5;
+    --card:#FFFFFF;
+    --ink:#173A34;
+    --sub:#5B756F;
+    --accent:#1F7A67;
+    --accent-soft:#DCEEE8;
+    --ring:#1F7A67;
+    --alarm:#C0392B;
+    --alarm-soft:#F8DDD8;
+    --line:#DCE6E3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1614;
+      --card:#162420;
+      --ink:#E9F3F0;
+      --sub:#8FA8A1;
+      --accent:#4FC3A8;
+      --accent-soft:#1C332C;
+      --ring:#4FC3A8;
+      --alarm:#FF6B58;
+      --alarm-soft:#3A211D;
+      --line:#233732;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1614; --card:#162420; --ink:#E9F3F0; --sub:#8FA8A1;
+    --accent:#4FC3A8; --accent-soft:#1C332C; --ring:#4FC3A8; --alarm:#FF6B58; --alarm-soft:#3A211D; --line:#233732;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    overscroll-behavior:none;
+  }
+  header{
+    padding:18px 20px 10px;
+    flex-shrink:0;
+  }
+  h1{
+    font-size:20px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:0.01em;
+  }
+  p.lead{
+    margin:4px 0 0;
+    color:var(--sub);
+    font-size:14px;
+  }
+  main{
+    flex:1;
+    overflow-y:auto;
+    padding:6px 20px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .ring-wrap{
+    display:flex;
+    justify-content:center;
+    padding:10px 0 4px;
+  }
+  .ring{
+    position:relative;
+    width:min(62vw,240px);
+    height:min(62vw,240px);
+  }
+  .ring svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .ring circle{fill:none;stroke-width:10;}
+  .ring .track{stroke:var(--line);}
+  .ring .prog{fill:none;stroke-width:10;stroke:var(--prog-color, var(--ring));stroke-linecap:round;transition:stroke-dashoffset 1s linear, stroke .3s;}
+  .ring.alarm .prog{stroke:var(--alarm) !important;}
+  .ring-center{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .ring-time{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;}
+  .ring-label{font-size:13px;color:var(--sub);margin-top:4px;text-align:center;padding:0 12px;}
+  .status-banner{
+    text-align:center;
+    font-size:15px;
+    font-weight:600;
+    color:var(--accent);
+    min-height:20px;
+  }
+  .status-banner.alarm{color:var(--alarm);}
+
+  .list{
+    background:var(--card);
+    border-radius:16px;
+    border:1px solid var(--line);
+    overflow:hidden;
+  }
+  .item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .item:last-child{border-bottom:none;}
+  .num{
+    width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;
+    background:var(--item-color, var(--accent));color:#fff;
+    opacity:0.4;
+    flex-shrink:0;
+    transition:opacity .3s, box-shadow .3s;
+  }
+  .item.done .num{opacity:1;}
+  .item.current .num{opacity:1;box-shadow:0 0 0 3px var(--item-color, var(--accent-soft));filter:brightness(1.05);}
+  .item.current.alarm .num{background:var(--alarm);box-shadow:0 0 0 3px var(--alarm-soft);}
+  .name-input{
+    flex:1;
+    border:none;
+    background:transparent;
+    font-size:16px;
+    color:var(--ink);
+    padding:4px 0;
+    min-width:0;
+  }
+  .name-input:disabled{color:var(--ink); opacity:0.9;}
+  .item.done .name-input{color:var(--sub); text-decoration:line-through;}
+  .check{
+    font-size:14px;color:var(--sub);flex-shrink:0;
+  }
+
+  footer{
+    flex-shrink:0;
+    padding:12px 20px calc(16px + env(safe-area-inset-bottom,0px));
+    display:flex;
+    gap:10px;
+  }
+  button{
+    font-family:inherit;
+    border:none;
+    border-radius:14px;
+    font-size:17px;
+    font-weight:700;
+    padding:16px 0;
+    flex:1;
+    min-height:52px;
+    cursor:pointer;
+  }
+  button:active{opacity:0.8;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-stop{background:var(--alarm);color:#fff;animation:pulse 1s infinite;}
+  .btn-secondary{background:var(--accent-soft);color:var(--accent);flex:0 0 92px;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.03);}}
+  .hint{
+    text-align:center;
+    font-size:12px;
+    color:var(--sub);
+    padding:0 20px 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>目薬タイマー</h1>
+  <p class="lead">5分ごとに1種類。前の音を止めると次が始まります。</p>
+</header>
+
+<main>
+  <div class="ring-wrap">
+    <div class="ring" id="ring">
+      <svg viewBox="0 0 200 200">
+        <circle class="track" cx="100" cy="100" r="88"></circle>
+        <circle class="prog" id="progCircle" cx="100" cy="100" r="88" stroke-dasharray="553" stroke-dashoffset="0"></circle>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-time" id="ringTime">5:00</div>
+        <div class="ring-label" id="ringLabel">開始ボタンを押してください</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-banner" id="statusBanner"></div>
+
+  <div class="list" id="list"></div>
+</main>
+
+<div class="hint" id="hint">この画面を開いたままにしてください（お使いのiPhoneが対応していない場合、バックグラウンドでは音が鳴らないことがあります）</div>
+
+<footer id="footer">
+  <button class="btn-secondary" id="resetBtn">リセット</button>
+  <button class="btn-primary" id="mainBtn">開始</button>
+</footer>
+
+<script>
+(function(){
+  const DROP_SECONDS = 5*60;
+  const defaultNames = ["目薬1","目薬2","目薬3","目薬4","目薬5"];
+  const dropColors = ["#1F7A67","#3B6FE0","#8A5CF6","#D98A2B","#D1577A"];
+  const STORAGE_KEY = 'eyeDropTimerNames';
+
+  let names = defaultNames.slice();
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(Array.isArray(saved) && saved.length === defaultNames.length){
+      names = saved;
+    }
+  }catch(e){ /* 読み込めない場合は既定値を使用 */ }
+
+  function saveNames(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(names)); }catch(e){ /* 保存できない場合は無視 */ }
+  }
+
+  let wakeLock = null;
+  async function requestWakeLock(){
+    try{
+      if('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+      }
+    }catch(e){ /* 非対応・許可されない場合は無視 */ }
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && wakeLock === null){
+      requestWakeLock();
+    }
+  });
+
+  let state = "idle"; // idle | running | alarm | done
+  let currentIndex = 0;
+  let remaining = DROP_SECONDS;
+  let tickHandle = null;
+
+  let audioCtx = null;
+  let alarmOsc = null;
+  let alarmGain = null;
+  let alarmLoopHandle = null;
+  let vibrateHandle = null;
+
+  const listEl = document.getElementById('list');
+  const ringTime = document.getElementById('ringTime');
+  const ringLabel = document.getElementById('ringLabel');
+  const ringCircle = document.getElementById('ring');
+  const progCircle = document.getElementById('progCircle');
+  const statusBanner = document.getElementById('statusBanner');
+  const mainBtn = document.getElementById('mainBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const CIRC = 2*Math.PI*88;
+
+  function renderList(){
+    listEl.innerHTML = '';
+    names.forEach((n, i)=>{
+      const row = document.createElement('div');
+      row.className = 'item';
+      if(i < currentIndex || (i===currentIndex && state==='done')) row.classList.add('done');
+      if(i === currentIndex && state!=='idle' && state!=='done') row.classList.add('current');
+      if(i === currentIndex && state==='alarm') row.classList.add('alarm');
+
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.style.setProperty('--item-color', dropColors[i % dropColors.length]);
+      num.textContent = (i < currentIndex || (i===currentIndex && state==='done')) ? '✓' : (i+1);
+
+      const input = document.createElement('input');
+      input.className = 'name-input';
+      input.value = n;
+      input.disabled = state !== 'idle';
+      input.addEventListener('input', ()=>{ names[i] = input.value; saveNames(); });
+
+      row.appendChild(num);
+      row.appendChild(input);
+      listEl.appendChild(row);
+    });
+  }
+
+  function formatTime(s){
+    const m = Math.floor(s/60);
+    const sec = s%60;
+    return m + ':' + String(sec).padStart(2,'0');
+  }
+
+  function updateRing(){
+    const frac = remaining / DROP_SECONDS;
+    progCircle.setAttribute('stroke-dasharray', CIRC);
+    progCircle.setAttribute('stroke-dashoffset', CIRC * (1-frac));
+    ringTime.textContent = formatTime(remaining);
+  }
+
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+  }
+
+  function beepOnce(){
+    if(!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.5, audioCtx.currentTime+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.35);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime+0.4);
+  }
+
+  function startAlarm(){
+    ensureAudio();
+    beepOnce();
+    alarmLoopHandle = setInterval(beepOnce, 700);
+    if(navigator.vibrate){
+      navigator.vibrate([300,200,300,200]);
+      vibrateHandle = setInterval(()=>navigator.vibrate([300,200,300,200]), 1400);
+    }
+  }
+
+  function stopAlarm(){
+    if(alarmLoopHandle){ clearInterval(alarmLoopHandle); alarmLoopHandle = null; }
+    if(vibrateHandle){ clearInterval(vibrateHandle); vibrateHandle = null; }
+    if(navigator.vibrate) navigator.vibrate(0);
+  }
+
+  function tick(){
+    remaining -= 1;
+    if(remaining <= 0){
+      remaining = 0;
+      updateRing();
+      clearInterval(tickHandle);
+      tickHandle = null;
+      enterAlarm();
+      return;
+    }
+    updateRing();
+  }
+
+  function enterAlarm(){
+    state = 'alarm';
+    ringCircle.classList.add('alarm');
+    ringLabel.textContent = names[currentIndex] + ' の点眼時間です';
+    statusBanner.textContent = '音を止めるまで鳴り続けます';
+    statusBanner.classList.add('alarm');
+    mainBtn.textContent = '音を止めて次へ';
+    mainBtn.className = 'btn-stop';
+    startAlarm();
+    renderList();
+  }
+
+  function startDrop(i){
+    state = 'running';
+    currentIndex = i;
+    remaining = DROP_SECONDS;
+    ringCircle.classList.remove('alarm');
+    ringCircle.style.setProperty('--prog-color', dropColors[i % dropColors.length]);
+    statusBanner.classList.remove('alarm');
+    statusBanner.textContent = '';
+    ringLabel.textContent = names[i] + ' を点眼後、待機中';
+    mainBtn.textContent = '実行中…';
+    mainBtn.className = 'btn-primary';
+    updateRing();
+    renderList();
+    tickHandle = setInterval(tick, 1000);
+  }
+
+  function releaseWakeLock(){
+    if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+  }
+
+  function finishAll(){
+    state = 'done';
+    stopAlarm();
+    releaseWakeLock();
+    ringCircle.classList.remove('alarm');
+    ringLabel.textContent = 'お疲れさまでした';
+    ringTime.textContent = '完了';
+    statusBanner.classList.remove('alarm');
+    statusBanner.textContent = '5種類すべて終了しました';
+    mainBtn.textContent = '開始';
+    mainBtn.className = 'btn-primary';
+    renderList();
+  }
+
+  function resetAll(){
+    if(tickHandle){ clearInterval(tickHandle); tickHandle = null; }
+    stopAlarm();
+    releaseWakeLock();
+    state = 'idle';
+    currentIndex = 0;
+    remaining = DROP_SECONDS;
+    ringCircle.classList.remove('alarm');
+    ringCircle.style.removeProperty('--prog-color');
+    statusBanner.classList.remove('alarm');
+    statusBanner.textContent = '';
+    ringLabel.textContent = '開始ボタンを押してください';
+    updateRing();
+    mainBtn.textContent = '開始';
+    mainBtn.className = 'btn-primary';
+    renderList();
+  }
+
+  mainBtn.addEventListener('click', ()=>{
+    ensureAudio();
+    requestWakeLock();
+    if(state === 'idle' || state === 'done'){
+      currentIndex = 0;
+      startDrop(0);
+    } else if(state === 'alarm'){
+      stopAlarm();
+      const next = currentIndex + 1;
+      if(next >= names.length){
+        finishAll();
+      } else {
+        startDrop(next);
+      }
+    }
+    // state === 'running': button shows "実行中…", ignore taps
+  });
+
+  resetBtn.addEventListener('click', resetAll);
+
+  renderList();
+  updateRing();
+})();
+</script>
+</body>
+</html>
