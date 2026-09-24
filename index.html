@@ -78,11 +78,13 @@
     display:flex;
     justify-content:center;
     padding:10px 0 4px;
+    flex-shrink:0;
   }
   .ring{
     position:relative;
-    width:min(62vw,240px);
-    height:min(62vw,240px);
+    width:min(50vw,200px);
+    height:min(50vw,200px);
+    flex-shrink:0;
   }
   .ring svg{width:100%;height:100%;transform:rotate(-90deg);}
   .ring circle{fill:none;stroke-width:10;}
@@ -93,7 +95,7 @@
     position:absolute;inset:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
   }
-  .ring-time{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;}
+  .ring-time{font-size:38px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;}
   .ring-label{font-size:13px;color:var(--sub);margin-top:4px;text-align:center;padding:0 12px;}
   .status-banner{
     text-align:center;
@@ -109,6 +111,7 @@
     border-radius:16px;
     border:1px solid var(--line);
     overflow:hidden;
+    flex-shrink:0;
   }
   .item{
     display:flex;
